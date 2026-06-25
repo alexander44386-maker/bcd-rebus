@@ -10,6 +10,18 @@ const PORT       = parseInt(process.env.PORT || '3000', 10);
 const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
 const PEER_PATH  = '/peerjs';
 
+// Metered.ca (Open Relay) TURN credentials — sign up free at metered.ca,
+// create an "app", and set these two env vars:
+//   METERED_APP_NAME = the subdomain part of <name>.metered.live
+//   METERED_API_KEY  = your API key from the Metered dashboard
+const METERED_APP_NAME = process.env.METERED_APP_NAME || '';
+const METERED_API_KEY  = process.env.METERED_API_KEY  || '';
+
+// Fallback if Metered isn't configured or its API is unreachable —
+// STUN-only, so direct (same-network) connections still work, but cross-NAT
+// connections will likely fail without a TURN relay.
+const FALLBACK_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+
 // ── App ───────────────────────────────────────────────────────────────────────
 const app    = express();
 const server = http.createServer(app);
@@ -57,10 +69,15 @@ app.get('/peer-config.js', (req, res) => {
       host = req.hostname; port = PORT; secure = false;
     }
   } else {
-    // Local dev: derive from the incoming request
+    // No PUBLIC_URL set — derive from the incoming request.
+    // IMPORTANT: behind a proxy (Render, Railway, Heroku, nginx, etc.) the
+    // browser always talks to the public edge on 443/80, never to the
+    // internal PORT the Node process is bound to. Using PORT here would
+    // tell the client to connect to a port that isn't publicly reachable.
     const proto = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const isProxied = !!req.headers['x-forwarded-proto'];
     host   = req.hostname;
-    port   = PORT;
+    port   = isProxied ? (proto === 'https' ? 443 : 80) : PORT;
     secure = proto === 'https';
   }
 
@@ -72,6 +89,39 @@ app.get('/peer-config.js', (req, res) => {
     `var PEER_PATH   = ${JSON.stringify(PEER_PATH)};\n` +
     `var PEER_SECURE = ${secure};\n`
   );
+});
+
+// ── /turn-credentials ───────────────────────────────────────────────────────
+// Proxies Metered's TURN credentials API so the API key never reaches the
+// browser. Credentials are cached briefly in memory to avoid re-fetching on
+// every single room join (Metered's free tier has a request quota).
+let iceCache = { servers: null, fetchedAt: 0 };
+const ICE_CACHE_MS = 10 * 60 * 1000; // 10 minutes
+
+app.get('/turn-credentials', async (_req, res) => {
+  const now = Date.now();
+  if (iceCache.servers && (now - iceCache.fetchedAt) < ICE_CACHE_MS) {
+    return res.json({ iceServers: iceCache.servers });
+  }
+
+  if (!METERED_APP_NAME || !METERED_API_KEY) {
+    console.warn('[turn] METERED_APP_NAME / METERED_API_KEY not set — falling back to STUN-only.');
+    return res.json({ iceServers: FALLBACK_ICE_SERVERS });
+  }
+
+  try {
+    const url = `https://${METERED_APP_NAME}.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`;
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Metered API responded ${r.status}`);
+    const iceServers = await r.json();
+    iceCache = { servers: iceServers, fetchedAt: now };
+    res.json({ iceServers });
+  } catch (e) {
+    console.error('[turn] failed to fetch Metered credentials:', e.message);
+    // Serve last-known-good credentials if we have any, even if stale,
+    // rather than dropping straight to STUN-only.
+    res.json({ iceServers: iceCache.servers || FALLBACK_ICE_SERVERS });
+  }
 });
 
 // ── Health check (prevents Render from thinking the app is down) ──────────────
