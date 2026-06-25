@@ -9,4 +9,8 @@ services:
       - key: PORT
         value: 10000
       - key: PUBLIC_URL
-        sync: false   # ← After first deploy, set this to your Render URL e.g. https://rebus-rumble.onrender.com
+        sync: false   # ← After first deploy, set this to your Render URL e.g. https://bcd-rebus.onrender.com/
+      - key: METERED_APP_NAME
+        sync: false   # ← The subdomain part of <name>.metered.live from your Metered dashboard
+      - key: METERED_API_KEY
+        sync: false   # ← Your API key from the Metered dashboard (Secret Key)
