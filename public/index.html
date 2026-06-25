@@ -580,6 +580,18 @@
     document.getElementById('roomCodeText').textContent = code;
   }
 
+  // ---- TURN CREDENTIALS (fetched from our own server, which proxies Metered) ----
+  let iceServersPromise = null;
+  function getIceServers(){
+    if(!iceServersPromise){
+      iceServersPromise = fetch('/turn-credentials')
+        .then(function(r){ return r.json(); })
+        .then(function(d){ return (d && d.iceServers) ? d.iceServers : [{urls:'stun:stun.l.google.com:19302'}]; })
+        .catch(function(){ return [{urls:'stun:stun.l.google.com:19302'}]; });
+    }
+    return iceServersPromise;
+  }
+
   function ensurePeerLib(){
     if (typeof Peer === 'undefined'){
       document.getElementById('landingError').textContent = 'Networking library failed to load. Check your internet connection and reload.';
@@ -620,20 +632,15 @@
   });
 
   // ---- HOSTING ----
-  function startHosting(attempt){
+  async function startHosting(attempt){
     attempt = attempt || 0;
     document.getElementById('landingError').textContent = '';
     roomCode = generateRoomCode();
+    const iceServers = await getIceServers();
     const peerOpts = (typeof PEER_HOST !== 'undefined' && PEER_HOST)
       ? { host: PEER_HOST, port: PEER_PORT, path: PEER_PATH, key: 'peerjs', secure: PEER_SECURE,
-          config: { iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:openrelay.metered.ca:80' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-          ]}}
-      : {};
+          config: { iceServers: iceServers } }
+      : { config: { iceServers: iceServers } };
     peer = new Peer(roomCode, peerOpts);
     peer.on('open', function(){
       myId = 'host';
@@ -776,18 +783,13 @@
   });
 
   // ---- JOINING ----
-  function joinRoom(code){
+  async function joinRoom(code){
     document.getElementById('landingError').textContent = '';
+    const iceServers = await getIceServers();
     const peerOpts = (typeof PEER_HOST !== 'undefined' && PEER_HOST)
       ? { host: PEER_HOST, port: PEER_PORT, path: PEER_PATH, key: 'peerjs', secure: PEER_SECURE,
-          config: { iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:openrelay.metered.ca:80' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-          ]}}
-      : {};
+          config: { iceServers: iceServers } }
+      : { config: { iceServers: iceServers } };
     peer = new Peer(undefined, peerOpts);
     peer.on('open', function(){
       myId = peer.id;
