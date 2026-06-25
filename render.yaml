@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: rebus-rumble
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PUBLIC_URL
+        sync: false   # ← After first deploy, set this to your Render URL e.g. https://rebus-rumble.onrender.com

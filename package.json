@@ -1,0 +1,19 @@
+{
+  "name": "rebus-rumble",
+  "version": "1.0.0",
+  "description": "Multiplayer Rebus picture-puzzle game with self-hosted PeerJS signaling",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "peer": "^1.0.2"
+  },
+  "keywords": ["rebus", "multiplayer", "peerjs", "game"],
+  "license": "MIT"
+}
