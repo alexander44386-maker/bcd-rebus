@@ -628,7 +628,10 @@
       ? { host: PEER_HOST, port: PEER_PORT, path: PEER_PATH, key: 'peerjs', secure: PEER_SECURE,
           config: { iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:openrelay.metered.ca:80' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
           ]}}
       : {};
     peer = new Peer(roomCode, peerOpts);
@@ -779,7 +782,10 @@
       ? { host: PEER_HOST, port: PEER_PORT, path: PEER_PATH, key: 'peerjs', secure: PEER_SECURE,
           config: { iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
+            { urls: 'stun:openrelay.metered.ca:80' },
+            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
           ]}}
       : {};
     peer = new Peer(undefined, peerOpts);
